@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="theme-color" content="#12141a" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="description" content="Danfo Oracle — read Lagos traffic before it happens. An endless corridor runner on a yellow bus." />
+<title>Danfo Oracle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --yellow: #f5c518;
+    --yellow-2: #ffdf6b;
+    --ink: #101218;
+    --panel: #1a1f2b;
+    --panel-2: #242b3a;
+    --line: rgba(255,255,255,.08);
+    --good: #3dd68c;
+    --bad: #ff5d73;
+    --warn: #ffb020;
+    --paper: #f6f1e6;
+    --muted: #9aa3b5;
+    --safe: 0px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: #07080c; color: var(--paper); font-family: Outfit, system-ui, sans-serif; }
+  button, input { font-family: inherit; }
+  #app {
+    min-height: 100%;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+  }
+  .stage {
+    width: min(480px, 100%);
+    min-height: 100dvh;
+    background:
+      radial-gradient(1200px 500px at 50% -10%, rgba(245,197,24,.18), transparent 50%),
+      linear-gradient(180deg, #171b24 0%, #101218 40%, #0c0e13 100%);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .screen { display: none; min-height: 100dvh; padding: calc(22px + env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom)); }
+  .screen.on { display: flex; flex-direction: column; }
+  h1, h2, .brand {
+    font-family: Syne, Outfit, sans-serif;
+    letter-spacing: -0.04em;
+    margin: 0;
+  }
+  .kicker {
+    color: var(--yellow);
+    font-weight: 700;
+    letter-spacing: .16em;
+    font-size: 11px;
+    text-transform: uppercase;
+  }
+  .brand { font-size: 46px; line-height: .9; margin: 8px 0 6px; }
+  .sub { color: var(--muted); margin: 0 0 18px; line-height: 1.45; }
+  .menu-art {
+    height: 210px;
+    border-radius: 22px;
+    margin: 8px 0 18px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, #ffb15a 0%, #e25b2a 42%, #1b2030 42%, #12151d 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .sun { position: absolute; width: 74px; height: 74px; border-radius: 50%; background: #ffe7a3; right: 36px; top: 28px; box-shadow: 0 0 40px #ffd27a; }
+  .bus {
+    position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+    width: 230px; height: 92px; background: var(--yellow); border-radius: 16px 18px 10px 10px;
+    box-shadow: 0 12px 0 #b08a09, 0 18px 30px rgba(0,0,0,.35);
+  }
+  .bus:before {
+    content: ""; position: absolute; left: 16px; right: 16px; top: 14px; height: 36px;
+    background: #1b2433; border-radius: 8px;
+    box-shadow: inset 0 0 0 3px #f5c518;
+  }
+  .bus:after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 22px; height: 8px; background: #161616;
+  }
+  .wheel { position: absolute; bottom: -14px; width: 28px; height: 28px; background: #111; border-radius: 50%; box-shadow: inset 0 0 0 6px #444; }
+  .wheel.l { left: 28px; } .wheel.r { right: 28px; }
+  .conductor {
+    position: absolute; right: -8px; top: 18px; width: 22px; height: 46px; background: #e07a3d; border-radius: 8px;
+  }
+  .row { display: flex; gap: 10px; }
+  .btn {
+    appearance: none; border: 0; cursor: pointer; border-radius: 14px;
+    padding: 14px 16px; font-weight: 700; font-size: 16px; color: #141414;
+    background: var(--yellow); width: 100%;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost {
+    background: transparent; color: var(--paper); box-shadow: inset 0 0 0 1px rgba(255,255,255,.14);
+  }
+  .btn.small { width: auto; padding: 10px 12px; font-size: 13px; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: rgba(255,255,255,.04);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 14px;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 16px; }
+  .card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.4; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .pill {
+    border-radius: 999px; padding: 6px 10px; background: rgba(245,197,24,.12); color: var(--yellow-2);
+    font-size: 12px; font-weight: 700;
+  }
+  input.name {
+    width: 100%; background: #0e1118; color: white; border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px 14px; font-size: 16px; margin: 8px 0 14px;
+  }
+  .upgrade {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid var(--line);
+  }
+  .upgrade:last-child { border-bottom: 0; }
+  .upgrade b { display: block; }
+  .upgrade span { color: var(--muted); font-size: 12px; }
+  .dots { display: flex; gap: 4px; margin-top: 6px; }
+  .dots i { width: 8px; height: 8px; border-radius: 50%; background: #333; display: block; }
+  .dots i.on { background: var(--yellow); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; }
+  #play { padding: 0; position: relative; background: #000; }
+  canvas { width: 100%; height: 100dvh; display: block; touch-action: none; }
+  .hud {
+    position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column;
+    justify-content: space-between; padding: calc(10px + env(safe-area-inset-top)) 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .hud * { pointer-events: auto; }
+  .hud-top, .meters, .controls { display: flex; gap: 8px; align-items: center; }
+  .hud-top { justify-content: space-between; }
+  .stat {
+    background: rgba(10,12,18,.72); backdrop-filter: blur(8px);
+    border-radius: 12px; padding: 8px 10px; min-width: 78px;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .stat em { display: block; font-style: normal; color: var(--muted); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+  .stat strong { font-size: 14px; }
+  .meters { margin-top: 8px; }
+  .bar { flex: 1; height: 8px; border-radius: 99px; background: rgba(255,255,255,.08); overflow: hidden; }
+  .bar > div { height: 100%; width: 50%; background: var(--good); }
+  .bar.fuel > div { background: var(--warn); }
+  .bar.heat > div { background: var(--bad); }
+  .toast {
+    align-self: center; margin-top: 10px; background: rgba(10,12,18,.8);
+    border: 1px solid rgba(245,197,24,.35); color: var(--yellow-2);
+    padding: 8px 12px; border-radius: 999px; font-size: 13px; font-weight: 600;
+    max-width: 92%; text-align: center;
+  }
+  .controls { justify-content: space-between; gap: 8px; }
+  .pad { display: flex; gap: 8px; }
+  .round {
+    width: 62px; height: 62px; border-radius: 18px; border: 0; font-weight: 800; font-size: 18px;
+    background: rgba(10,12,18,.78); color: white; border: 1px solid rgba(255,255,255,.08);
+  }
+  .round.phone { background: var(--yellow); color: #161616; width: 84px; }
+  .round.go { background: #243044; }
+  .hintlane {
+    position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
+    background: rgba(61,214,140,.16); color: #b9ffd9; border: 1px solid rgba(61,214,140,.4);
+    padding: 8px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;
+  }
+  .phone-sheet {
+    position: absolute; left: 10px; right: 10px; bottom: calc(84px + env(safe-area-inset-bottom));
+    background: #0e131c; border: 1px solid rgba(255,255,255,.08); border-radius: 22px;
+    padding: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    display: none;
+  }
+  .phone-sheet.on { display: block; }
+  .apps { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .app {
+    text-align: left; background: #1a2230; color: white; border: 1px solid rgba(255,255,255,.06);
+    border-radius: 14px; padding: 12px; cursor: pointer;
+  }
+  .app b { display: block; margin-bottom: 4px; }
+  .app span { color: var(--muted); font-size: 12px; }
+  .radio-box { margin-top: 10px; font-size: 13px; color: #d5dbea; line-height: 1.4; }
+  .over-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 12px 0; }
+  .over-grid div { background: rgba(255,255,255,.04); border-radius: 12px; padding: 10px; }
+  .over-grid em { display: block; color: var(--muted); font-style: normal; font-size: 11px; }
+  .footer-note { margin-top: auto; color: var(--muted); font-size: 12px; padding-top: 16px; }
+  .lock { opacity: .55; }
+  @media (min-width: 860px) {
+    body { display: flex; }
+    .stage { min-height: 100dvh; border-left: 1px solid #222; border-right: 1px solid #222; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="stage">
+    <section class="screen on" id="screen-menu">
+      <div class="kicker">Lagos corridor runner</div>
+      <h1 class="brand">Danfo<br>Oracle</h1>
+      <p class="sub">The road is chaos. Your phone is the only thing that sees thirty seconds ahead. Read it, commit, deliver the bus.</p>
+      <div class="menu-art" aria-hidden="true">
+        <div class="sun"></div>
+        <div class="bus"><div class="wheel l"></div><div class="wheel r"></div><div class="conductor"></div></div>
+      </div>
+      <label class="kicker" for="driver">Driver name</label>
+      <input id="driver" class="name" maxlength="18" placeholder="Your name" />
+      <div class="stack">
+        <button class="btn" id="play-btn">Enter the motor park</button>
+        <div class="row">
+          <button class="btn ghost" id="garage-btn">Garage</button>
+          <button class="btn ghost" id="board-btn">Park board</button>
+        </div>
+        <button class="btn ghost" id="how-btn">How to drive</button>
+      </div>
+      <p class="footer-note">Bank: <b id="bank">₦0</b> · Runs saved on this phone. Sound <button class="btn small ghost" id="sound-btn" style="width:auto">On</button></p>
+    </section>
+
+    <section class="screen" id="screen-how">
+      <div class="topbar"><button class="btn small ghost" data-back>Back</button><span class="pill">Lesson</span></div>
+      <h2>How to drive</h2>
+      <p class="sub">Better than real go-slow: every hit is readable on the replay.</p>
+      <div class="stack">
+        <div class="card"><h3>Steer</h3><p>Left and right, swipe, or the on-screen pads. Three lanes: gutter, center, overtake. One lane is almost always clean.</p></div>
+        <div class="card"><h3>The phone</h3><p>Open it and time slows. Route Oracle marks a lane. Pothole Ear flashes holes. Cabin Sense cools the bus. Street Radio warns of LASTMA, agbero, and rain. Staring too long drains focus.</p></div>
+        <div class="card"><h3>Stops and money</h3><p>Hold brake in the right lane as a stop arrives to collect fares. Smooth reads pay tips. Fines, fuel, and settlements come out at the park.</p></div>
+        <div class="card"><h3>Don't die proud</h3><p>Rims, fuel, or an empty bus end the run. Upgrade tires, the oracle chip, and your conductor so the city stops betraying you.</p></div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-garage">
+      <div class="topbar"><button class="btn small ghost" data-back>Back</button><span class="pill" id="garage-bank">₦0</span></div>
+      <h2>Garage</h2>
+      <p class="sub">You are not buying a sports car. You are buying a danfo that stops lying.</p>
+      <div id="upgrades"></div>
+    </section>
+
+    <section class="screen" id="screen-board">
+      <div class="topbar"><button class="btn small ghost" data-back>Back</button><span class="pill">This phone</span></div>
+      <h2>Motor park board</h2>
+      <p class="sub">Best net take per corridor. Rival names are the park. Yours stick.</p>
+      <div id="boards"></div>
+    </section>
+
+    <section class="screen" id="screen-pick">
+      <div class="topbar"><button class="btn small ghost" data-back>Back</button><span class="pill">Pick a corridor</span></div>
+      <h2>Where to?</h2>
+      <p class="sub">Each road has its own mood. Unlock the next with lifetime earnings.</p>
+      <div class="stack" id="corridors"></div>
+    </section>
+
+    <section class="screen" id="play">
+      <canvas id="c"></canvas>
+      <div class="hud">
+        <div>
+          <div class="hud-top">
+            <div class="stat"><em id="cor-name">Corridor</em><strong id="hud-naira">₦0</strong></div>
+            <div class="stat"><em>Time</em><strong id="hud-time">0:00</strong></div>
+            <button class="btn small ghost" id="pause-btn">Pause</button>
+          </div>
+          <div class="meters">
+            <div class="bar fuel" title="Fuel"><div id="fuel-bar"></div></div>
+            <div class="bar" title="Rims"><div id="rim-bar"></div></div>
+            <div class="bar heat" title="Cabin heat"><div id="heat-bar"></div></div>
+          </div>
+          <div class="toast" id="toast" style="display:none"></div>
+          <div class="hintlane" id="hint" style="display:none"></div>
+        </div>
+        <div>
+          <div class="phone-sheet" id="phone">
+            <div class="kicker">In-bus phone · focus <span id="focus-label">100</span></div>
+            <div class="apps">
+              <button class="app" data-app="oracle"><b>Route Oracle</b><span>Mark a lane</span></button>
+              <button class="app" data-app="ear"><b>Pothole Ear</b><span>Hear the drop</span></button>
+              <button class="app" data-app="cabin"><b>Cabin Sense</b><span>Cool the bus</span></button>
+              <button class="app" data-app="radio"><b>Street Radio</b><span>Junction gossip</span></button>
+            </div>
+            <div class="radio-box" id="radio-box">Open an app. Time is slow while this is up.</div>
+            <button class="btn" id="settle-btn" style="margin-top:10px;display:none">Settle agbero</button>
+          </div>
+          <div class="controls">
+            <div class="pad">
+              <button class="round" id="left-btn">◀</button>
+              <button class="round" id="right-btn">▶</button>
+            </div>
+            <button class="round phone" id="phone-btn">PHONE</button>
+            <div class="pad">
+              <button class="round go" id="brake-btn">BRAKE</button>
+              <button class="round" id="horn-btn">HORN</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-over">
+      <div class="kicker" id="over-kicker">Park</div>
+      <h2 id="over-title" style="font-family:Syne,sans-serif;font-size:36px;letter-spacing:-.04em;margin:8px 0">Run don end</h2>
+      <p class="sub" id="over-sub"></p>
+      <div class="over-grid" id="over-grid"></div>
+      <div class="stack">
+        <button class="btn" id="again-btn">Run it back</button>
+        <button class="btn ghost" id="share-btn">Share replay text</button>
+        <button class="btn ghost" id="menu-btn">Motor park</button>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-pause">
+      <div class="kicker">Held</div>
+      <h2 style="font-family:Syne,sans-serif;font-size:40px;margin:8px 0">Paused</h2>
+      <p class="sub">The junction can wait. Lagos rarely does.</p>
+      <div class="stack">
+        <button class="btn" id="resume-btn">Back to the wheel</button>
+        <button class="btn ghost" id="quit-btn">Abandon run</button>
+      </div>
+    </section>
+  </div>
+</div>
+<script>
+const SAVE_KEY = "danfo-oracle-v1";
+const CORRIDORS = [
+  { id: "yaba", name: "Yaba → Ojuelegba", mood: "Morning school run", length: 2200, speed: 0.34, pothole: 0.34, okada: 0.18, lastma: 0.08, agbero: 0.1, rain: 0.05, unlock: 0, sky: ["#ffb15a", "#e25b2a", "#243044"] },
+  { id: "mainland", name: "Third Mainland", mood: "Evening gold", length: 3000, speed: 0.4, pothole: 0.2, okada: 0.26, lastma: 0.12, agbero: 0.08, rain: 0.2, unlock: 3500, sky: ["#ff8a3d", "#7a2f6b", "#1a1830"] },
+  { id: "ikorodu", name: "Ikorodu Road", mood: "Night market", length: 2800, speed: 0.36, pothole: 0.42, okada: 0.16, lastma: 0.1, agbero: 0.16, rain: 0.1, unlock: 9000, sky: ["#243056", "#121426", "#07080e"] },
+  { id: "lekki", name: "Lekki-Epe", mood: "Rush hour", length: 3400, speed: 0.44, pothole: 0.16, okada: 0.32, lastma: 0.2, agbero: 0.06, rain: 0.18, unlock: 16000, sky: ["#8fd0ff", "#f0d7a2", "#2a3344"] }
+];
+const UPGRADES = [
+  { id: "tires", name: "Tires", max: 3, base: 600, blurb: "Potholes hurt less" },
+  { id: "mount", name: "Phone mount", max: 3, base: 700, blurb: "Focus lasts longer" },
+  { id: "conductor", name: "Conductor", max: 3, base: 800, blurb: "Fares, calm, settlements" },
+  { id: "chip", name: "Oracle chip", max: 4, base: 900, blurb: "Cleaner lane calls" },
+  { id: "speakers", name: "Speakers", max: 2, base: 500, blurb: "Cabin heats slower" },
+  { id: "horn", name: "Horn", max: 2, base: 450, blurb: "Push okada aside" },
+  { id: "tank", name: "Fuel tank", max: 3, base: 650, blurb: "Longer corridors" }
+];
+const LANES = ["Gutter", "Center", "Overtake"];
+
+const defaultSave = () => ({
+  name: "Oga Driver",
+  bank: 1000,
+  lifetime: 0,
+  sound: true,
+  upgrades: { tires: 0, mount: 0, conductor: 0, chip: 0, speakers: 0, horn: 0, tank: 0 },
+  boards: {}
+});
+let save = load();
+function load() {
+  try { return Object.assign(defaultSave(), JSON.parse(localStorage.getItem(SAVE_KEY) || "{}")); }
+  catch { return defaultSave(); }
+}
+function persist() { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); }
+
+const $ = (id) => document.getElementById(id);
+const screens = [...document.querySelectorAll(".screen")];
+function show(id) {
+  screens.forEach(s => s.classList.toggle("on", s.id === id));
+  if (id === "screen-menu") paintMenu();
+  if (id === "screen-garage") paintGarage();
+  if (id === "screen-board") paintBoards();
+  if (id === "screen-pick") paintCorridors();
+}
+document.querySelectorAll("[data-back]").forEach(b => b.onclick = () => show("screen-menu"));
+$("garage-btn").onclick = () => show("screen-garage");
+$("board-btn").onclick = () => show("screen-board");
+$("how-btn").onclick = () => show("screen-how");
+$("play-btn").onclick = () => { save.name = $("driver").value.trim() || "Oga Driver"; persist(); show("screen-pick"); };
+$("menu-btn").onclick = () => show("screen-menu");
+$("sound-btn").onclick = () => { save.sound = !save.sound; persist(); paintMenu(); audio.unlock(); };
+
+function naira(n) { return "₦" + Math.max(0, Math.round(n)).toLocaleString("en-NG"); }
+function paintMenu() {
+  $("driver").value = save.name;
+  $("bank").textContent = naira(save.bank);
+  $("sound-btn").textContent = save.sound ? "On" : "Off";
+}
+function costOf(u, level) { return Math.round(u.base * Math.pow(1.65, level)); }
+function paintGarage() {
+  $("garage-bank").textContent = naira(save.bank);
+  $("upgrades").innerHTML = UPGRADES.map(u => {
+    const lv = save.upgrades[u.id] || 0;
+    const dots = Array.from({ length: u.max }, (_, i) => `<i class="${i < lv ? "on" : ""}"></i>`).join("");
+    const maxed = lv >= u.max;
+    const cost = costOf(u, lv);
+    return `<div class="upgrade"><div><b>${u.name}</b><span>${u.blurb}</span><div class="dots">${dots}</div></div>
+      <button class="btn small" data-buy="${u.id}" ${maxed || save.bank < cost ? "disabled" : ""}>${maxed ? "Max" : naira(cost)}</button></div>`;
+  }).join("");
+  $("upgrades").querySelectorAll("[data-buy]").forEach(btn => btn.onclick = () => {
+    const u = UPGRADES.find(x => x.id === btn.dataset.buy);
+    const lv = save.upgrades[u.id] || 0;
+    const cost = costOf(u, lv);
+    if (lv >= u.max || save.bank < cost) return;
+    save.bank -= cost;
+    save.upgrades[u.id] = lv + 1;
+    persist();
+    paintGarage();
+  });
+}
+function paintBoards() {
+  $("boards").innerHTML = CORRIDORS.map(c => {
+    const rows = (save.boards[c.id] || seedBoard(c.id)).slice(0, 6);
+    return `<div class="card" style="margin-bottom:10px"><h3>${c.name}</h3><table><tr><th>#</th><th>Driver</th><th>Net</th><th>Time</th></tr>
+      ${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${r.name}</td><td>${naira(r.net)}</td><td>${fmt(r.time)}</td></tr>`).join("")}
+      </table></div>`;
+  }).join("");
+}
+function seedBoard(id) {
+  const names = ["Sola", "Iya Bose", "Emeka", "Conductor K", "Aunty Ngozi", "Bayo"];
+  return names.map((name, i) => ({ name, net: 1800 - i * 220 + (id.length * 40), time: 70 + i * 9 }));
+}
+function paintCorridors() {
+  $("corridors").innerHTML = CORRIDORS.map(c => {
+    const locked = save.lifetime < c.unlock;
+    return `<div class="card ${locked ? "lock" : ""}"><h3>${c.name}</h3><p>${c.mood} · ${locked ? "Unlock at " + naira(c.unlock) + " lifetime" : "Open"}</p>
+      <button class="btn" style="margin-top:10px" data-go="${c.id}" ${locked ? "disabled" : ""}>${locked ? "Locked" : "Drive"}</button></div>`;
+  }).join("");
+  $("corridors").querySelectorAll("[data-go]").forEach(b => b.onclick = () => startRun(b.dataset.go));
+}
+
+const audio = {
+  ctx: null,
+  unlock() {
+    if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  },
+  tone(freq, dur, type, gain) {
+    if (!save.sound) return;
+    this.unlock();
+    const o = this.ctx.createOscillator();
+    const g = this.ctx.createGain();
+    o.type = type || "square";
+    o.frequency.value = freq;
+    g.gain.value = gain || 0.04;
+    o.connect(g); g.connect(this.ctx.destination);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
+    o.stop(this.ctx.currentTime + dur);
+  },
+  horn() { this.tone(220, 0.18, "sawtooth", 0.06); this.tone(180, 0.22, "square", 0.03); },
+  hit() { this.tone(90, 0.2, "sawtooth", 0.07); },
+  coin() { this.tone(660, 0.08, "square", 0.04); this.tone(880, 0.1, "square", 0.03); },
+  warn() { this.tone(520, 0.12, "triangle", 0.05); }
+};
+
+const canvas = $("c");
+const ctx = canvas.getContext("2d");
+let run = null, raf = 0, last = 0, keys = {};
+function resize() {
+  const r = canvas.getBoundingClientRect();
+  canvas.width = Math.max(320, r.width * devicePixelRatio);
+  canvas.height = Math.max(480, r.height * devicePixelRatio);
+}
+window.addEventListener("resize", resize);
+
+function startRun(id) {
+  const corridor = CORRIDORS.find(c => c.id === id);
+  audio.unlock();
+  run = {
+    corridor, t: 0, dist: 0, objects: [], spawnIn: 0.4, naira: 0, fares: 0, tips: 0, fines: 0, settles: 0,
+    reads: 0, clean: 0, hits: 0, phone: false, hint: null, ear: 0, radio: "", settle: null,
+    focus: 100, heat: 12, fuel: 100, rims: 3, passengers: 11, lane: 1, lanePos: 1,
+    slowing: false, horn: 0, rain: 0, ended: false, toast: "", toastT: 0, shake: 0,
+    speed: corridor.speed
+  };
+  show("play");
+  resize();
+  last = performance.now();
+  cancelAnimationFrame(raf);
+  raf = requestAnimationFrame(loop);
+  say("Ojuelegba no be here yet. Read the phone.");
+  $("phone").classList.remove("on");
+  $("cor-name").textContent = corridor.name;
+}
+function say(text) { run.toast = text; run.toastT = 2.4; }
+function accuracy() { return [0.58, 0.7, 0.8, 0.9, 0.97][save.upgrades.chip || 0]; }
+function focusDrain() { return [28, 20, 14, 9][save.upgrades.mount || 0]; }
+function heatRate() { return [2.4, 1.7, 1.1][save.upgrades.speakers || 0]; }
+function tireMitigation() { return [1, 0.7, 0.4, 0][save.upgrades.tires || 0]; }
+
+function spawn() {
+  const c = run.corridor;
+  const roll = Math.random();
+  const kind = roll < c.pothole ? "pothole" : roll < c.pothole + c.okada ? "okada" : roll < c.pothole + c.okada + c.lastma ? "lastma" : roll < c.pothole + c.okada + c.lastma + c.agbero ? "agbero" : roll < 0.78 ? "truck" : "car";
+  if (run.dist > 280 && run.dist % 520 < 40 && !run.objects.some(o => o.type === "stop" && o.z < 0.5)) {
+    run.objects.push({ type: "stop", lane: 2, z: 0.02, resolved: false });
+    return;
+  }
+  if (kind === "agbero") {
+    run.objects.push({ type: "agbero", lane: 1, z: 0.02, resolved: false, safe: 1 });
+    return;
+  }
+  const blocked = new Set();
+  const count = kind === "truck" || kind === "lastma" ? 1 : Math.random() < 0.35 ? 2 : 1;
+  while (blocked.size < count) blocked.add(Math.floor(Math.random() * 3));
+  const open = [0, 1, 2].find(l => !blocked.has(l));
+  blocked.forEach(lane => run.objects.push({ type: kind, lane, z: 0.02 + Math.random() * 0.02, resolved: false, safe: open, drift: Math.random() < 0.5 ? -1 : 1 }));
+  if (Math.random() < c.rain && run.rain <= 0) run.rain = 5.5;
+}
+
+function nearestThreat() {
+  return run.objects.filter(o => !o.resolved && o.z < 0.78 && o.type !== "stop" && o.type !== "car").sort((a, b) => b.z - a.z)[0];
+}
+function useApp(app) {
+  if (!run || run.ended) return;
+  audio.warn();
+  if (app === "oracle") {
+    const t = nearestThreat();
+    if (!t) { $("radio-box").textContent = "Road clear for a breath. Don't waste it."; return; }
+    const correct = t.safe == null ? t.lane === run.lane ? (t.lane + 1) % 3 : [0,1,2].find(l => l !== t.lane) : t.safe;
+    const shown = Math.random() < accuracy() - (run.rain > 0 ? 0.18 : 0) ? correct : (correct + 1 + Math.floor(Math.random() * 2)) % 3;
+    run.hint = { lane: shown, until: run.t + 2.6 + (save.upgrades.mount || 0) * 0.25, truth: correct };
+    run.reads++;
+    $("radio-box").textContent = `Oracle: hold ${LANES[shown]} lane. Confidence ${Math.round(accuracy() * 100)}%.`;
+    $("hint").style.display = "block";
+    $("hint").textContent = `Ghost line · ${LANES[shown]}`;
+  } else if (app === "ear") {
+    run.ear = run.t + 3.2;
+    const holes = run.objects.filter(o => o.type === "pothole" && !o.resolved);
+    $("radio-box").textContent = holes.length ? `Ear: pothole in ${holes.map(h => LANES[h.lane]).join(" & ")}.` : "Ear: no drop close. Tires can rest.";
+    audio.tone(740, 0.08, "sine", 0.04);
+  } else if (app === "cabin") {
+    run.heat = Math.max(0, run.heat - 28 - (save.upgrades.conductor || 0) * 6);
+    $("radio-box").textContent = "Speakers up. Cabin cooling. Don't let them bang the roof.";
+    audio.coin();
+  } else if (app === "radio") {
+    const next = run.objects.find(o => !o.resolved && (o.type === "lastma" || o.type === "agbero" || o.type === "pothole"));
+    if (!next) $("radio-box").textContent = "Radio quiet. Junction still arguing with itself.";
+    else if (next.type === "lastma") $("radio-box").textContent = `LASTMA checkpoint in the ${LANES[next.lane]} lane. Take another.`;
+    else if (next.type === "agbero") $("radio-box").textContent = "Agbero cluster ahead. Settle, or let a good conductor talk.";
+    else $("radio-box").textContent = `Pothole gossip: ${LANES[next.lane]} lane.`;
+    if (run.rain > 0) $("radio-box").textContent += " Rain dey fall. Oracle go dey lie small.";
+  }
+}
+
+function hitObject(o) {
+  if (o.resolved) return;
+  o.resolved = true;
+  run.hits++;
+  run.shake = 8;
+  if (navigator.vibrate) navigator.vibrate(30);
+  if (o.type === "pothole") {
+    const dmg = tireMitigation();
+    run.rims -= dmg;
+    run.speed *= 0.82;
+    say(dmg === 0 ? "Tire swallow the hole." : "Pothole! Rim dey cry.");
+    audio.hit();
+  } else if (o.type === "okada") {
+    run.rims -= 0.6;
+    run.heat += 8;
+    say("Okada cut you. Horn next time.");
+    audio.hit();
+  } else if (o.type === "truck" || o.type === "car") {
+    run.rims -= 1;
+    run.speed *= 0.7;
+    say("You kiss a bumper.");
+    audio.hit();
+  } else if (o.type === "lastma") {
+    run.fines += 500;
+    run.naira -= 500;
+    run.speed *= 0.6;
+    say("LASTMA stop you. Fine don land.");
+    audio.hit();
+  } else if (o.type === "agbero") {
+    const fee = 200 - (save.upgrades.conductor || 0) * 40;
+    if ((save.upgrades.conductor || 0) >= 2) {
+      say("Conductor talk am. You pass.");
+      run.clean++;
+    } else {
+      run.settles += fee;
+      run.naira -= fee;
+      run.speed *= 0.75;
+      say(`Agbero collect ${naira(fee)}.`);
+    }
+  }
+  if (run.rims <= 0) return endRun("Rim don scatter");
+}
+
+function passObject(o) {
+  if (o.resolved) return;
+  o.resolved = true;
+  if (o.type === "stop") {
+    run.heat += 14;
+    say("You miss the stop. Passengers dey hiss.");
+    return;
+  }
+  if (o.type === "car") return;
+  run.clean++;
+  if (run.hint && run.lane === run.hint.truth) {
+    const tip = 40 + (save.upgrades.conductor || 0) * 15;
+    run.tips += tip;
+    run.naira += tip;
+  }
+}
+
+function collectStop(o) {
+  o.resolved = true;
+  const fare = 90 + run.passengers * 18 + (save.upgrades.conductor || 0) * 25;
+  run.fares += fare;
+  run.naira += fare;
+  run.heat = Math.max(0, run.heat - 8);
+  say(`Stop clear. ${naira(fare)} enter.`);
+  audio.coin();
+}
+
+function endRun(reason) {
+  if (run.ended) return;
+  run.ended = true;
+  cancelAnimationFrame(raf);
+  const fuelCost = Math.round(run.dist * (0.18 - (save.upgrades.tank || 0) * 0.03));
+  const net = Math.round(run.naira - fuelCost);
+  save.bank += Math.max(0, net);
+  save.lifetime += Math.max(0, run.fares + run.tips);
+  const board = save.boards[run.corridor.id] || seedBoard(run.corridor.id);
+  board.push({ name: save.name, net: Math.max(0, net), time: run.t });
+  board.sort((a, b) => b.net - a.net || a.time - b.time);
+  save.boards[run.corridor.id] = board.slice(0, 8);
+  persist();
+  const reached = run.dist >= run.corridor.length;
+  $("over-kicker").textContent = run.corridor.name;
+  $("over-title").textContent = reached ? "You don reach" : reason;
+  $("over-sub").textContent = reached ? "Corridor clear. The park heard your horn." : "The bus lived to tell it. Watch the replay in your head, then go again.";
+  $("over-grid").innerHTML = [
+    ["Net", naira(Math.max(0, net))],
+    ["Fares", naira(run.fares)],
+    ["Tips", naira(run.tips)],
+    ["Fines", naira(run.fines + run.settles)],
+    ["Fuel", naira(fuelCost)],
+    ["Time", fmt(run.t)],
+    ["Clean reads", String(run.clean)],
+    ["Hits", String(run.hits)]
+  ].map(([k, v]) => `<div><em>${k}</em><strong>${v}</strong></div>`).join("");
+  run.share = `DANFO ORACLE — ${run.corridor.name}\n${save.name} cleared ${naira(Math.max(0, net))} in ${fmt(run.t)}.\nClean reads ${run.clean}. Hits ${run.hits}.\nOracle say enter. I ${run.hits ? "still touch something" : "no enter the hole"}.`;
+  show("screen-over");
+}
+function fmt(t) { t = Math.floor(t); return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0"); }
+
+function loop(now) {
+  if (!run || run.ended) return;
+  const dt = Math.min(0.033, (now - last) / 1000);
+  last = now;
+  const slow = run.phone ? 0.4 : 1;
+  const world = dt * slow;
+  run.t += world;
+  const move = run.speed * (run.slowing ? 0.48 : 1) * (0.85 + Math.min(0.5, run.dist / 4000)) * world * 60;
+  run.dist += move * 3.1;
+  run.speed = Math.min(run.corridor.speed * 1.45, run.speed + world * 0.004);
+  run.fuel -= world * (1.45 - (save.upgrades.tank || 0) * 0.22);
+  run.heat += world * heatRate() * (run.rain > 0 ? 0.6 : 1);
+  run.focus = run.phone ? Math.max(0, run.focus - world * focusDrain()) : Math.min(100, run.focus + world * 18);
+  if (run.phone && run.focus <= 0) { run.phone = false; $("phone").classList.remove("on"); say("Focus don finish. Eyes on the road."); }
+  if (run.rain > 0) run.rain -= world;
+  if (run.horn > 0) run.horn -= world;
+  if (run.toastT > 0) run.toastT -= dt;
+  run.lanePos += (run.lane - run.lanePos) * Math.min(1, world * (run.rain > 0 ? 6 : 10));
+  run.spawnIn -= world;
+  if (run.spawnIn <= 0) { spawn(); run.spawnIn = 1.15 - Math.min(0.45, run.dist / 8000); }
+  run.objects.forEach(o => {
+    o.z += world * run.speed * 0.85;
+    if (o.type === "okada" && o.z > 0.35 && o.z < 0.7 && Math.random() < world * 0.8) {
+      const next = Math.max(0, Math.min(2, o.lane + o.drift));
+      if (run.horn > 0 && next === run.lane) o.lane = Math.max(0, Math.min(2, o.lane - o.drift));
+      else o.lane = next;
+    }
+    if (o.type === "stop" && !o.resolved && o.z > 0.72 && o.z < 0.9 && run.lane === 2 && run.slowing) collectStop(o);
+    const same = o.lane === run.lane && o.type !== "stop";
+    if (!o.resolved && same && o.z > 0.8 && o.z < 0.96) hitObject(o);
+    if (!o.resolved && o.z >= 0.98) passObject(o);
+  });
+  run.objects = run.objects.filter(o => o.z < 1.05);
+  if (run.ended) return;
+  if (run.heat >= 100) {
+    run.heat = 60;
+    run.passengers -= 1;
+    say("Passenger bang roof and come down.");
+    if (run.passengers <= 0) return endRun("Bus don empty");
+  }
+  if (run.ended) return;
+  if (run.fuel <= 0) return endRun("Fuel don finish");
+  if (run.dist >= run.corridor.length) {
+    run.naira += 600;
+    return endRun("You don reach");
+  }
+  draw();
+  paintHud();
+  raf = requestAnimationFrame(loop);
+}
+
+function laneX(lane, z, w) {
+  const spread = (0.05 + z * 0.30) * w;
+  return w / 2 + (lane - 1) * spread;
+}
+function draw() {
+  const w = canvas.width, h = canvas.height;
+  const sky = run.corridor.sky;
+  const g = ctx.createLinearGradient(0, 0, 0, h * 0.46);
+  g.addColorStop(0, sky[0]); g.addColorStop(0.55, sky[1]); g.addColorStop(1, sky[2]);
+  ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = "rgba(255,220,140,.9)";
+  ctx.beginPath(); ctx.arc(w * 0.78, h * 0.16, w * 0.06, 0, 7); ctx.fill();
+  ctx.fillStyle = "#161922";
+  for (let i = 0; i < 18; i++) {
+    const bh = 30 + ((i * 47) % 80);
+    ctx.globalAlpha = 0.35 + (i % 3) * 0.1;
+    ctx.fillRect(i * (w / 17), h * 0.42 - bh, w / 22, bh);
+  }
+  ctx.globalAlpha = 1;
+  const horizon = h * 0.42;
+  ctx.fillStyle = "#2a241c";
+  ctx.beginPath();
+  ctx.moveTo(0, h); ctx.lineTo(w * 0.18, horizon); ctx.lineTo(w * 0.82, horizon); ctx.lineTo(w, h); ctx.fill();
+  ctx.fillStyle = run.rain > 0 ? "#1a1c22" : "#24262e";
+  ctx.beginPath();
+  ctx.moveTo(w * 0.08, h); ctx.lineTo(w * 0.3, horizon); ctx.lineTo(w * 0.7, horizon); ctx.lineTo(w * 0.92, h); ctx.fill();
+  for (let i = 0; i < 16; i++) {
+    const z = ((i / 16 + (run.dist * 0.002) % 0.08) % 1);
+    const y = horizon + Math.pow(z, 1.4) * (h - horizon);
+    ctx.strokeStyle = "rgba(255,255,255,.35)";
+    ctx.lineWidth = 2 + z * 8;
+    ctx.beginPath();
+    ctx.moveTo(laneX(0.5, z, w), y);
+    ctx.lineTo(laneX(0.5, z, w) + 10 + z * 30, y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(laneX(1.5, z, w), y);
+    ctx.lineTo(laneX(1.5, z, w) + 10 + z * 30, y);
+    ctx.stroke();
+  }
+  if (run.hint && run.t < run.hint.until) {
+    ctx.fillStyle = "rgba(61,214,140,.18)";
+    const z1 = 0.2, z2 = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(laneX(run.hint.lane - 0.45, z1, w), horizon + z1 * (h * 0.5));
+    ctx.lineTo(laneX(run.hint.lane + 0.45, z1, w), horizon + z1 * (h * 0.5));
+    ctx.lineTo(laneX(run.hint.lane + 0.45, z2, w), horizon + z2 * (h * 0.52));
+    ctx.lineTo(laneX(run.hint.lane - 0.45, z2, w), horizon + z2 * (h * 0.52));
+    ctx.fill();
+  } else if ($("hint")) $("hint").style.display = "none";
+  run.objects.slice().sort((a, b) => a.z - b.z).forEach(o => drawObject(o, w, h, horizon));
+  if (run.rain > 0) {
+    ctx.strokeStyle = "rgba(200,220,255,.35)";
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 40; i++) {
+      const x = (i * 97 + run.t * 400) % w;
+      const y = (i * 53 + run.t * 700) % h;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 8, y + 18); ctx.stroke();
+    }
+  }
+  drawBus(w, h);
+}
+function drawObject(o, w, h, horizon) {
+  const z = o.z;
+  const x = laneX(o.lane, z, w);
+  const y = horizon + Math.pow(z, 1.35) * (h * 0.5);
+  const s = 8 + z * 46;
+  ctx.save();
+  if (run.shake) ctx.translate((Math.random() - 0.5) * run.shake, 0);
+  if (o.type === "pothole") {
+    ctx.fillStyle = run.ear > run.t ? "#ff5d73" : "#0c0d11";
+    ctx.beginPath(); ctx.ellipse(x, y, s * 0.7, s * 0.28, 0, 0, 7); ctx.fill();
+  } else if (o.type === "stop") {
+    ctx.fillStyle = "#f5c518";
+    ctx.fillRect(x - s * 0.15, y - s * 1.1, s * 0.3, s * 1.1);
+    ctx.fillStyle = "#111";
+    ctx.fillRect(x - s * 0.5, y - s * 1.2, s, s * 0.28);
+  } else if (o.type === "okada") {
+    ctx.fillStyle = "#d7d7d7";
+    ctx.fillRect(x - s * 0.25, y - s * 0.4, s * 0.5, s * 0.35);
+    ctx.fillStyle = "#222";
+    ctx.beginPath(); ctx.arc(x, y - s * 0.55, s * 0.16, 0, 7); ctx.fill();
+  } else if (o.type === "lastma") {
+    ctx.fillStyle = "#f5c518";
+    ctx.fillRect(x - s * 0.45, y - s * 0.7, s * 0.9, s * 0.55);
+    ctx.fillStyle = "#111";
+    ctx.fillRect(x - s * 0.45, y - s * 0.45, s * 0.9, s * 0.12);
+  } else if (o.type === "agbero") {
+    ctx.fillStyle = "#e07a3d";
+    ctx.fillRect(x - s * 0.2, y - s * 0.8, s * 0.28, s * 0.6);
+    ctx.fillStyle = "#f5c518";
+    ctx.fillRect(x + s * 0.1, y - s * 0.7, s * 0.22, s * 0.5);
+  } else if (o.type === "truck") {
+    ctx.fillStyle = "#8d98a8";
+    ctx.fillRect(x - s * 0.55, y - s * 0.8, s * 1.1, s * 0.7);
+  } else {
+    ctx.fillStyle = "#c23b3b";
+    ctx.fillRect(x - s * 0.4, y - s * 0.45, s * 0.8, s * 0.4);
+  }
+  ctx.restore();
+}
+function drawBus(w, h) {
+  const x = laneX(run.lanePos, 0.92, w);
+  const y = h * 0.78;
+  const shake = run.shake ? (Math.random() - 0.5) * 6 : 0;
+  if (run.shake) run.shake *= 0.9;
+  ctx.save();
+  ctx.translate(x + shake, y);
+  ctx.fillStyle = "#111";
+  ctx.fillRect(-78, 48, 28, 28); ctx.fillRect(50, 48, 28, 28);
+  ctx.fillStyle = "#f5c518";
+  roundRect(-90, -20, 180, 86, 16);
+  ctx.fillStyle = "#161616";
+  ctx.fillRect(-90, 28, 180, 10);
+  ctx.fillStyle = "#1b2433";
+  roundRect(-70, -6, 36, 28, 4);
+  roundRect(-28, -6, 36, 28, 4);
+  roundRect(14, -6, 36, 28, 4);
+  ctx.fillStyle = "#e07a3d";
+  ctx.fillRect(78, -8, 16, 40);
+  ctx.fillStyle = "#ffe7a3";
+  ctx.fillRect(-86, 40, 16, 8);
+  ctx.fillRect(70, 40, 16, 8);
+  ctx.fillStyle = "white";
+  ctx.font = "700 18px Outfit, sans-serif";
+  ctx.fillText(save.name.slice(0, 10), -40, 22);
+  ctx.restore();
+}
+function roundRect(x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  ctx.fill();
+}
+function paintHud() {
+  $("hud-naira").textContent = naira(Math.max(0, run.naira));
+  $("hud-time").textContent = fmt(run.t);
+  $("fuel-bar").style.width = Math.max(0, run.fuel) + "%";
+  $("rim-bar").style.width = Math.max(0, run.rims / 3 * 100) + "%";
+  $("heat-bar").style.width = Math.max(0, Math.min(100, run.heat)) + "%";
+  $("focus-label").textContent = Math.round(run.focus);
+  $("toast").style.display = run.toastT > 0 ? "block" : "none";
+  $("toast").textContent = run.toast;
+  const ag = run.objects.some(o => o.type === "agbero" && !o.resolved && o.z > 0.25);
+  $("settle-btn").style.display = ag ? "block" : "none";
+}
+
+function steer(dir) {
+  if (!run || run.ended) return;
+  run.lane = Math.max(0, Math.min(2, run.lane + dir));
+}
+$("left-btn").onclick = () => steer(-1);
+$("right-btn").onclick = () => steer(1);
+$("phone-btn").onclick = () => {
+  if (!run || run.ended) return;
+  run.phone = !run.phone;
+  $("phone").classList.toggle("on", run.phone);
+  if (run.phone) audio.unlock();
+};
+$("brake-btn").onpointerdown = e => { e.preventDefault(); if (run) run.slowing = true; };
+$("brake-btn").onpointerup = () => { if (run) run.slowing = false; };
+$("brake-btn").onpointerleave = () => { if (run) run.slowing = false; };
+$("horn-btn").onclick = () => { if (!run) return; run.horn = 0.8 + (save.upgrades.horn || 0) * 0.4; audio.horn(); say("Horn!"); };
+document.querySelectorAll("[data-app]").forEach(b => b.onclick = () => useApp(b.dataset.app));
+$("settle-btn").onclick = () => {
+  const o = run && run.objects.find(x => x.type === "agbero" && !x.resolved);
+  if (!o) return;
+  const fee = 180;
+  run.naira -= fee; run.settles += fee; o.resolved = true;
+  say("You settle am early. Road open.");
+};
+$("pause-btn").onclick = () => { if (!run || run.ended) return; cancelAnimationFrame(raf); show("screen-pause"); };
+$("resume-btn").onclick = () => { show("play"); last = performance.now(); raf = requestAnimationFrame(loop); };
+$("quit-btn").onclick = () => { run.ended = true; cancelAnimationFrame(raf); show("screen-menu"); };
+$("again-btn").onclick = () => startRun(run.corridor.id);
+$("share-btn").onclick = async () => {
+  const text = run.share || "Danfo Oracle";
+  try {
+    if (navigator.share) await navigator.share({ title: "Danfo Oracle", text });
+    else { await navigator.clipboard.writeText(text); $("share-btn").textContent = "Copied"; }
+  } catch {}
+};
+addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === "ArrowLeft" || e.key === "a") steer(-1);
+  if (e.key === "ArrowRight" || e.key === "d") steer(1);
+  if (e.key === "p") $("phone-btn").click();
+  if (e.key === " ") { e.preventDefault(); if (run) run.horn = 0.7; audio.horn(); }
+  if (e.key === "ArrowDown" || e.key === "s") { if (run) run.slowing = true; }
+  if (e.key === "Escape" && run && !run.ended) $("pause-btn").click();
+});
+addEventListener("keyup", e => {
+  keys[e.key] = false;
+  if (e.key === "ArrowDown" || e.key === "s") { if (run) run.slowing = false; }
+});
+let touchX = null;
+canvas.addEventListener("pointerdown", e => { touchX = e.clientX; });
+canvas.addEventListener("pointerup", e => {
+  if (touchX == null) return;
+  const dx = e.clientX - touchX;
+  if (dx > 30) steer(1);
+  if (dx < -30) steer(-1);
+  touchX = null;
+});
+paintMenu();
+</script>
+</body>
+</html>
